@@ -5,6 +5,8 @@ We intend on creating a tool that extracts gadgets from provided ELF binaries an
 ### Supported Platforms
 Linux 64-bit
 
+### Functionality: execute the shellcode.
+
 ### Input: one (or more) 64-bit ELF binaries.
 
 ### Output: the raw ROP payload to be executed.
@@ -30,3 +32,8 @@ Video demonstration of the tool in action on a successful exploit.
 
 ### Honor Code
 We pledge by the Stevens Honor Code.
+
+
+- Specifications of your tool (what will the functionality be, inputs/outputs, supported platforms, etc.) Generally, everything the user of your tool needs to know.
+
+- Design of your tool. What are the components of your tool, how do they connect, what kind of techniques are you using, what are the limitations (if any). Generally, everything a new developer that wants to modify the tool or someone that wants to recreate the tool needs to know.
