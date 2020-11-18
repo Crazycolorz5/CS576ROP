@@ -1,4 +1,7 @@
 from struct import pack, unpack
+from capstone import *
+
+md = Cs(CS_ARCH_X86, CS_MODE_64)
 
 def unpack_single(f, d):
     return unpack(f, d)[0]
@@ -51,4 +54,4 @@ class TextSegment(Segment):
         super().__init__(offset_in_elf, data)
         
     def getCode(self):
-        pass
+        return list(md.disasm(self.data, self.offset_in_elf))
