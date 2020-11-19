@@ -23,13 +23,13 @@ int main(int argc, char **argv)
 {
 	char buf[BUFSZ];
 	int r;
-
+	printf("Input your message and then press enter...\n");
 	while (1) {
 		r = read(STDIN_FILENO, buf, BUFSZ);
 		if (r <= 0)
 			break;
 		do_echo(buf);
+//		printf("\nPlease press enter to begin your next echo...\n");
 	}
-
 	return 0;
 }
