@@ -70,14 +70,6 @@ def LoadConstIntoReg(GadgetList, Reg, Const, fd) :
             fd.write("\t\t# Address of 'xor Reg, Reg; ret'")
             fd.write("\n\t")
             
-            if int(Const) != 0 : 
-                if changeRegValue(GadgetList, Reg, 0, Const, fd) == 0: 
-                    print("Unable to find gadgets which can change rax's value")
-                    print("Exiting...")
-                    sys.exit()
-
-                else: 
-                    return 1
         x = x + 1
     
     print("Unable to find necessary gadgets to load a value into a register")
