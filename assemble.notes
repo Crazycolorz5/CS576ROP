@@ -5,7 +5,11 @@ storing in memory:
 MOV [RDI], RAX; ret
 MOV [RAX], RCX; ret
 
-
+available rop chain generators:
+  execve (execve[=<cmd>], default /bin/sh) [Linux x86, x86_64]
+  mprotect  (mprotect=<address>:<size>) [Linux x86, x86_64]
+  virtualprotect (virtualprotect=<address iat vp>:<size>) [Windows x86]
+  
 supported filetypes:
   ELF --> YES
   PE
@@ -13,17 +17,11 @@ supported filetypes:
   Raw
 
 supported architectures:
+  s390x (IBM Z and LinuxONE)
   x86 [x86]
-  x86_64 [x86_64] --> YES
+  x86_64 [x86_64] amd64 (Intel/AMD 64-bit) --> YES
   MIPS [MIPS, MIPS64]
   ARM/Thumb [ARM, ARMTHUMB]
   ARM64 [ARM64]
-  PowerPC [PPC, PPC64]
+  PowerPC [PPC, PPC64] ppc64el (POWER8 and POWER9)
   SPARC [SPARC64]
-
-available rop chain generators:
-  execve (execve[=<cmd>], default /bin/sh) [Linux x86, x86_64]
-  mprotect  (mprotect=<address>:<size>) [Linux x86, x86_64]
-  virtualprotect (virtualprotect=<address iat vp>:<size>) [Windows x86]
-
-
