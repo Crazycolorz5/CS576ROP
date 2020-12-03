@@ -9,6 +9,12 @@ class Gadget():
     def __init__(self, insns):
         self.insns = insns
         
+    def __getitem__(self, idx):
+        return self.insns[idx]
+        
+    def __len__(self):
+        return len(self.insns)
+        
     def prettyPrint(self):
         acc = ''
         for insn in self.insns:
