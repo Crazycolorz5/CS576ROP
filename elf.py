@@ -1,7 +1,5 @@
 from struct import pack, unpack
-from capstone import *
-
-md = Cs(CS_ARCH_X86, CS_MODE_64)
+from arch import md
 
 def unpack_single(f, d):
     return unpack(f, d)[0]
@@ -48,6 +46,9 @@ class Segment():
     def __init__(self, offset_in_elf, data):
         self.offset_in_elf = offset_in_elf
         self.data = data
+        
+    def getData(self):
+        return self.data
 
 class TextSegment(Segment):
     def __init__(self, offset_in_elf, data):

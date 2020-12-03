@@ -1,10 +1,9 @@
 # Utility functions for testing
-from capstone import *
+from arch import md
 from elf import *
 from gadget import *
 
 def printCode(c):
-    md = Cs(CS_ARCH_X86, CS_MODE_64)
     for (address, size, mnemonic, op_str) in md.disasm_lite(c, 0):
         print("0x%x:\t%s\t%s" %(address, mnemonic, op_str))
 
