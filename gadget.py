@@ -18,12 +18,12 @@ class Gadget():
     def prettyPrint(self):
         acc = ''
         for insn in self.insns:
-            acc += '{}: {} {} {}\n'.format(insn.address, format_bytes(insn.bytes), insn.mnemonic, insn.op_str)
+            acc += '{}: {} {} {}\n'.format(hex(insn.address), format_bytes(insn.bytes), insn.mnemonic, insn.op_str)
         return acc
 
 # In code segments locate ret's or indirect calls and search preceeding instructions for useful behaviors (movs, pushes, pops, incs, syscall)
-usefulOperations = ['push', 'pop', 'add', 'sub', 'mov', 'xor', 'inc']
-gadgetTerminators = ['ret', 'call', 'jmp', 'syscall']
+usefulOperations = ['push', 'pop', 'add', 'mov', 'xor', 'inc'] # Other potentially useful instructions: sub
+gadgetTerminators = ['ret', 'call', 'syscall'] # Other potential terminators: 'jmp'
 
 # [CsInsn] -> [Int] (indices of terminators)
 def findGadgetTerminators(code):
