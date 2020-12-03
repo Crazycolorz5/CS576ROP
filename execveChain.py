@@ -214,13 +214,12 @@ def WriteStuffIntoMemory(data, addr, fd) :
 
 def checkIfSyscallPresent(GadgetList) : 
 
-    specialList = GadgetList[SPECIAL_INST]
     syscallList = list()
 
     x = 0
-    while x < len(specialList) : 
+    while x < len(GadgetList) : 
        
-        gadget = specialList[0]
+        gadget = GadgetList[0]
         inst = gadget[0]
         if inst['mnemonic'] == "syscall": 
             syscallList.append(gadget)
@@ -275,13 +274,13 @@ def execveROPChain(GadgetList):
         # syscall
     
     if len(syscallList1) > 0: 
-        case2(GadgetList, data_section_addr)
+        execve_bin_sh(GadgetList, data_section_addr)
         sys.exit()
 
     print("--> No syscall => ROP Chaining failed")
     sys.exit()
 
-def case2(GadgetList, data_section_addr) : 
+def execve_bin_sh(GadgetList, data_section_addr) : 
 
     # Open the file where the payload is written in the form of a python script
     fd = open("execveROPChain.py", "w")
