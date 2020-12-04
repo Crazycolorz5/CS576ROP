@@ -41,6 +41,30 @@ class Elf():
             acc.append(TextSegment( \
                 section_offset, self.data[section_offset:section_offset+section_size]))
         return acc
+    
+    # Elf -> [Segment]
+    def getWritableDataSegments(self):
+        acc = []
+        
+        header_offset = self.section_header_table_offset
+        next_header_offset = header_offset
+        for i in range(self.section_header_table_size):
+            header_offset = next_header_offset
+            next_header_offset += self.section_header_length
+            
+            section_type = unpack_single('<i', self.data[header_offset+0x4:header_offset+0x8])
+            if section_type != 0x1: # We want PROGBITS
+                continue
+            
+            section_flags = unpack_single('<q', self.data[header_offset+0x8:header_offset+0x10])
+            # Only proceed if the section is writable.
+            if section_flags & 0x1 == 0:
+                continue
+            section_offset = unpack_single('<q', self.data[header_offset+0x18:header_offset+0x20])
+            section_size = unpack_single('<q', self.data[header_offset+0x20:header_offset+0x28])
+            acc.append(DataSegment( \
+                section_offset, self.data[section_offset:section_offset+section_size]))
+        return acc
 
 class Segment():
     def __init__(self, offset_in_elf, data):
@@ -56,3 +80,6 @@ class TextSegment(Segment):
         
     def getCode(self):
         return list(md.disasm(self.data, self.offset_in_elf))
+
+class DataSegment(Segment):
+    pass

