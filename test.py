@@ -18,7 +18,7 @@ def printAll(s):
 def printAllGadgets(s):
     gs = getAllGadgets(s)
     for g in gs:
-        print(g.prettyPrint())
+        print(g)
 
 def getAllGadgets(s):
     return [g for t in Elf(s).getTextSegments() for g in extractAllGadgets(t.getCode())]
@@ -26,8 +26,21 @@ def getAllGadgets(s):
 def printGadgetsInSegments(ts):
     for t in ts:
         for g in t:
-            print(g.prettyPrint())
+            print(g)
 
 def ROPchainBinary(s):
     gadgets = getAllGadgets(s)
     execveROPChain(gadgets)
+
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1:
+        if len(sys.argv) == 3:
+            if sys.argv[2] == "--ropchain":
+                ROPchainBinary(sys.argv[1])
+            elif sys.argv[2] == "--gadget":
+                printAllGadgets(sys.argv[1])
+            else:
+                print("Unknown operation.")
+        else:
+            printAllGadgets(sys.argv[1])
