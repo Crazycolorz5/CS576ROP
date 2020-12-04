@@ -17,11 +17,11 @@ class Gadget():
         return len(self.insns)
         
     def __str__(self):
-        return '{0:#018x} : {1:}'.format(self.insns[0].address, reduce(lambda acc, e: acc + " ; " + e, ["{} {}".format(insn.mnemonic, insn.op_str) for insn in self.insns]))
+        return '{0:#018x} : {1:}'.format(self.insns[0].address, reduce(lambda acc, e: acc + " ; " + e, [insn.mnemonic + ((" " + insn.op_str) if insn.op_str else "") for insn in self.insns]))
         
 # In code segments locate ret's or indirect calls and search preceeding instructions for useful behaviors (movs, pushes, pops, incs, syscall)
-usefulOperations = ['push', 'pop', 'add', 'mov', 'xor', 'inc', 'nop', 'endbr64'] # Other potentially useful instructions: sub
-gadgetTerminators = ['ret', 'call', 'syscall'] # Other potential terminators: 'jmp'
+usefulOperations = ['push', 'pop', 'add', 'mov', 'xor', 'inc', 'nop', 'endbr64', 'syscall'] # Other potentially useful instructions: sub
+gadgetTerminators = ['ret', 'syscall'] # Other potential terminators: 'call', 'jmp' (validate that they're indirect?)
 
 # [CsInsn] -> [Int] (indices of terminators)
 def findGadgetTerminators(code):
@@ -41,7 +41,7 @@ def extractGadgets(code, idx):
     base_offs = code[start_idx].address
     for i in range(len(supergadget_bytes) - len(code[idx].bytes), 0, -1):
         insns = tuple(md.disasm(supergadget_bytes[i:], base_offs + i))
-        if len(insns) > 1 and insns[-1].mnemonic in gadgetTerminators and all(map(lambda insn: insn.mnemonic in usefulOperations, insns[:-1])):
+        if len(insns) >= 1 and insns[-1].mnemonic in gadgetTerminators and all(map(lambda insn: insn.mnemonic in usefulOperations, insns[:-1])):
             acc.append(Gadget(insns))
     return acc
 

