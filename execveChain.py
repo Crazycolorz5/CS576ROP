@@ -17,10 +17,7 @@ def LoadConstIntoReg(GadgetList, Reg, Const, fd) :
     RegList = queryGadgets(GadgetList, Reg)
    
     # Search for "pop Reg; ret"
-    x = 0
-    while x < len(RegList) : 
-
-        gadget = RegList[x]
+    for gadget in RegList: 
         inst = gadget[0]
 
         if inst.mnemonic == "pop" : 
@@ -47,8 +44,6 @@ def LoadConstIntoReg(GadgetList, Reg, Const, fd) :
             
             return
         
-        x = x + 1
-    
   
     # Search for "xor Reg, Reg; ret"
     # x = 0
@@ -72,7 +67,7 @@ def LoadConstIntoReg(GadgetList, Reg, Const, fd) :
     #        fd.write("\t\t# Address of 'xor Reg, Reg; ret'")
     #        fd.write("\n\t")
     
-    print("Unable to find necessary gadgets to load a value into a register")
+    print("Unable to find necessary gadgets to load a value into register " + reg)
     print("Exiting...")
     sys.exit()
 
@@ -83,22 +78,16 @@ def getSyscallList():
     else:
         return list()
 
-# From the categorized gadgets, this routine will return a list of gadgets belonging to the queried category and containing target register.
+# From the gadgets, this routine will return a list of gadgets that contain the target register as an operand.
 def queryGadgets(GadgetList, targetReg):
-
     L = GadgetList
-
     ReturnList = list()
 
-    x = 0
     for gadget in L:
         inst = gadget[0]
 
         if targetReg in operands(inst): 
             ReturnList.append(gadget)
-        
-        # Keep the loop going!
-        x = x + 1
     
     return ReturnList
 
@@ -114,15 +103,14 @@ def getPopGadgets(Gadgets):
 
 def getMovQwordGadgets(Gadgets):
     movQwordGadgets = list()
-
-    for gadget in Gadgets: # TODO: Clean up this mess
-        if len(gadget) >= 2:
-            if gadget[-2].mnemonic == 'mov':
+    
+    for gadget in Gadgets:
+        if len(gadget) >= 2 and gadget[-2].mnemonic == 'mov':
                 ops = operands(gadget[-2])
-                if re.search("^qword ptr \[[a-z]+\]$", ops[0])  and ops[1] in REGISTERS : 
-                    if(gadget[-2:] not in movQwordGadgets): # no duplicates please
-                        movQwordGadgets.append(gadget[-2:])
-
+                if re.search("^qword ptr \[[a-z]+\]$", ops[0]) and ops[1] in REGISTERS and \
+                gadget[-2:] not in movQwordGadgets: # no duplicates please
+                    movQwordGadgets.append(gadget[-2:])
+    
     return movQwordGadgets
 
 def canWrite(movQwordGadgets, popGadgets):
@@ -150,9 +138,9 @@ def canWrite(movQwordGadgets, popGadgets):
 
 def WriteStuffIntoMemory(GadgetList, data, addr, fd) : 
 
-    popGadgets = getPopGadgets(GadgetList)
+    popGadgets = getPopGadgets(GadgetList) #TODO we can sophisticate this with LoadConstIntoReg-kind of idea
     movQwordGadgets = getMovQwordGadgets(GadgetList)
-
+    print(movQwordGadgets)
     movpopGadgets = canWrite(movQwordGadgets, popGadgets)
 
     if len(movpopGadgets) == 0: 

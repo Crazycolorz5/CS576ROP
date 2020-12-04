@@ -47,7 +47,7 @@ def extractPartialInstructionGadget(code, idx):
     terminatorOffset = len(prevInsn)
     allBytes = prevInsn + code[idx].bytes
     acc = []
-    for i in range(terminatorOffset - 1, 1, -1):
+    for i in range(terminatorOffset - 1, 0, -1):
         insns = tuple(md.disasm(allBytes[i:], prevInsn_offset + i))
         if len(insns) > 1 and insns[-1].mnemonic in gadgetTerminators and all(map(lambda insn: insn.mnemonic in usefulOperations, insns[:-1])):
             acc.append(Gadget(insns))
