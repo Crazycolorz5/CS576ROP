@@ -18,11 +18,24 @@ def printAll(s):
 def printAllGadgets(s):
     e = Elf(s)
     gs = getAllGadgets(e)
-    gcount = 0
+
+    gdict = {}
     for g in gs:
-        print(g)
-        gcount = gcount + 1
-    print(str(gcount) + " gadgets found..")
+        #print(g)
+        gstr = str(g).split(':')
+        gdict[gstr[0]] = gstr[1]
+        #print(gstr[0].strip())
+        #print(gstr[1].strip())
+
+    sort_gadgets = sorted(gdict.items(), key=lambda x: x[1])
+    gcnt = 0
+    temp = []
+    for i in sort_gadgets:
+        if i[1] not in temp:
+            temp.append(i[1])
+            gcnt = gcnt + 1
+            print(i[0], i[1])
+    print(str(gcnt) + " unique gadgets found..")
 
 def getAllGadgets(e):
     return [g for t in e.getTextSegments() for cb in t.getCodeBlocks() for g in extractAllGadgets(cb)]
