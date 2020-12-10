@@ -18,8 +18,11 @@ def printAll(s):
 def printAllGadgets(s):
     e = Elf(s)
     gs = getAllGadgets(e)
+    gcount = 0
     for g in gs:
         print(g)
+        gcount = gcount + 1
+    print(str(gcount) + " gadgets found..")
 
 def getAllGadgets(e):
     return [g for t in e.getTextSegments() for cb in t.getCodeBlocks() for g in extractAllGadgets(cb)]
