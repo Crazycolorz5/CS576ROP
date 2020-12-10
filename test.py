@@ -16,12 +16,13 @@ def printAll(s):
         print()
 
 def printAllGadgets(s):
-    gs = getAllGadgets(s)
+    e = Elf(s)
+    gs = getAllGadgets(e)
     for g in gs:
         print(g)
 
 def getAllGadgets(e):
-    return [g for t in e.getTextSegments() for g in extractAllGadgets(t.getCode())]
+    return [g for t in e.getTextSegments() for cb in t.getCodeBlocks() for g in extractAllGadgets(cb)]
 
 def printGadgetsInSegments(ts):
     for t in ts:

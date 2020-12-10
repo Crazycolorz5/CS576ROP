@@ -78,8 +78,18 @@ class TextSegment(Segment):
     def __init__(self, offset_in_elf, data):
         super().__init__(offset_in_elf, data)
         
-    def getCode(self):
-        return list(md.disasm(self.data, self.offset_in_elf))
+    def getCodeBlocks(self):
+        offs = 0
+        total_len = len(self.data)
+        blocks = []
+        while offs < total_len:
+            temp = list(md.disasm(self.data[offs:], self.offset_in_elf + offs))
+            if temp == []:
+                offs += 1
+                continue
+            blocks.append(temp)
+            offs = temp[-1].address + temp[-1].size
+        return blocks
 
 class DataSegment(Segment):
     pass

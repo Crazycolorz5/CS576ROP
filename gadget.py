@@ -20,7 +20,7 @@ class Gadget():
         return '{0:#018x} : {1:}'.format(self.insns[0].address, reduce(lambda acc, e: acc + " ; " + e, [insn.mnemonic + ((" " + insn.op_str) if insn.op_str else "") for insn in self.insns]))
         
 # In code segments locate ret's or indirect calls and search preceeding instructions for useful behaviors (movs, pushes, pops, incs, syscall)
-usefulOperations = ['push', 'pop', 'add', 'mov', 'xor', 'inc', 'nop', 'endbr64', 'syscall'] # Other potentially useful instructions: sub
+usefulOperations = ['pop', 'add', 'mov', 'xor', 'inc', 'nop', 'endbr64', 'syscall'] # Other potentially useful instructions: sub
 gadgetTerminators = ['ret', 'syscall'] # Other potential terminators: 'call', 'jmp' (validate that they're indirect?)
 
 # [CsInsn] -> [Int] (indices of terminators)
