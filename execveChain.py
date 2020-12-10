@@ -133,12 +133,12 @@ def checkIfSyscallPresent(GadgetList) :
     
     return syscallList
 
-header = '''#!/usr/bin/env python2
+header = '''#!/usr/bin/env python3
 import struct
 
 if __name__ == '__main__' :
 \t# Enter the amount of junk required
-\tpayload = ''
+\tpayload = b''
 \t
 \t# Enter offset of the binary loaded in memory
 \toffset = 0
@@ -157,7 +157,7 @@ def execveROPChain(GadgetList, elf):
     """ Get a section from the file, by name. Return None if no such
             section exists.
     """
-    data_section_addr = elf.getWritableDataSegments()[0].offset_in_elf #TODO: Should be offset in loaded image
+    data_section_addr = elf.getDataSegment().address
     execve_bin_sh(GadgetList, data_section_addr)
     sys.exit()
 
