@@ -9,7 +9,18 @@ def printAllGadgets(s):
     e = Elf(s)
     gs = getAllGadgets(e)
     for g in gs:
-        print(g)
+        gstr = str(g).split(':')
+        gdict[gstr[0]] = gstr[1]
+        
+        sort_gadgets = sorted(gdict.items(), key=lambda x: x[1])
+        gcnt = 0
+        temp = []
+        for i in sort_gadgets:
+            if i[1] not in temp:
+                temp.append(i[1])
+                gcnt = gcnt + 1
+                print(i[0], i[1])
+        print(str(gcnt) + " unique gadgets found..")
 
 def ROPchainBinary(s, null_ok):
     elf = Elf(s)
