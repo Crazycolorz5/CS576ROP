@@ -9,16 +9,16 @@ class Gadget():
     # self.insns: array of capstone CsInsn's that represent the gadget
     def __init__(self, insns):
         self.insns = insns
-        
+    
     def __getitem__(self, idx):
         return self.insns[idx]
-        
+    
     def __len__(self):
         return len(self.insns)
-        
+    
     def __str__(self):
         return '{0:#018x} : {1:}'.format(self.insns[0].address, reduce(lambda acc, e: acc + " ; " + e, [insn.mnemonic + ((" " + insn.op_str) if insn.op_str else "") for insn in self.insns]))
-        
+
 # In code segments locate ret's or indirect calls and search preceeding instructions for useful behaviors (movs, pushes, pops, incs, syscall)
 usefulOperations = ['pop', 'add', 'mov', 'xor', 'inc', 'nop', 'endbr64', 'syscall'] # Other potentially useful instructions: sub
 gadgetTerminators = ['ret', 'syscall'] # Other potential terminators: 'call', 'jmp' (validate that they're indirect?)
