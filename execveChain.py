@@ -10,6 +10,15 @@ REGISTERS = [   "rax", "rbx", "rcx", "rdx", "rdi", "rsi", "rbp", "r9", "r10", "r
 def operands(csinsn):
     return csinsn.op_str.split(', ')
 
+def memoize(f):
+    memopad = {}
+    def g(*args):
+        if args in memopad: return memopad[args]
+        ret = f(*args)
+        memopad[args] = ret
+        return ret
+    return g
+
 # Padding in qwords
 # Returns a pair (int, [register]) that tells how many qwords on the stack the series of
 # instructions consumes, and what registers it clobbers
@@ -39,6 +48,7 @@ def writePadding(n):
 
 # Find all gadgets that begin with a pop into reg.
 # They also ought to end in ret.
+@memoize
 def getPopGadgets(gadgetList, reg):
     acc = []
     for g in gadgetList:
@@ -48,6 +58,7 @@ def getPopGadgets(gadgetList, reg):
     return acc
 
 # Find all gadgets that set a register value to 0.
+@memoize
 def getZeroingGadgets(gadgetList, reg):
     acc = []
     for g in gadgetList:
@@ -64,6 +75,7 @@ def getZeroingGadgets(gadgetList, reg):
     return acc
 
 # Get gadgets that can increment the given reg
+@memoize
 def getIncrementingGadgets(gadgetList, reg):
     acc = []
     for g in gadgetList:
