@@ -16,26 +16,26 @@ Our tool will be able to do the following:
 1) Extract useful gadgets from provided binaries (ELF files).
 2) Automatically assemble gadgets to form a payload that gives the user a working sh shell.
 
-### Dependencies / Installation
+## Dependencies / Installation
 
-## Python3
+### Python3
 We intend to create the tool in Python3.
 
-## Capstone
+### Capstone
 We will use Capstone as our x86_64 disassembler, to aid in the locating of gadgets.
 This can be installed with `pip install capstone`.
 Alternatively, a requirements file is provided, so one may execute:
 `pip install -r requirements.txt`.
 
-### Input: one (or more) 64-bit ELF binaries.
+## Input: one (or more) 64-bit ELF binaries.
 
-### Outputs
+## Outputs
 
-## Useful gadgets
+### Useful gadgets
 
-## A script to create the raw ROP payload to be executed.
+### A script to create the raw ROP payload to be executed.
 
-### Design Notes
+## Design Notes
 
 We will have a module for extracting as many gadgets as possible from a given binary.
 We will have a set of functions that searches gadgets for various behaviors that are useful building block.
@@ -59,7 +59,7 @@ The code should just be compiled with `make` while in the directory.
 Video demonstration of the tool in action on a successful exploit.
 
 
-### Authors & Honor Code
+## Authors & Honor Code
 In alphabetical order:
  - Chen, Adam
  - Rodman, Dean
