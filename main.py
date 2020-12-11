@@ -18,7 +18,7 @@ def printAllGadgets(s):
     temp = []
     for i in sort_gadgets:
         if i[0] not in temp:
-            temp.append(i[1])
+            temp.append(i[0])
             gcnt = gcnt + 1
             print(i[1])
     print(str(gcnt) + " unique gadgets found..")
