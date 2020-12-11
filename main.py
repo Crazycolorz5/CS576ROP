@@ -8,6 +8,7 @@ def getAllGadgets(e):
 def printAllGadgets(s):
     e = Elf(s)
     gs = getAllGadgets(e)
+    gdict = {}
     for g in gs:
         gstr = str(g).split(':')
         gdict[gstr[0]] = gstr[1]
