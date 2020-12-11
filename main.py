@@ -6,7 +6,8 @@ def getAllGadgets(e):
     return [g for t in e.getTextSegments() for cb in t.getCodeBlocks() for g in extractAllGadgets(cb)]
 
 def printAllGadgets(s):
-    gs = getAllGadgets(s)
+    e = Elf(s)
+    gs = getAllGadgets(e)
     for g in gs:
         print(g)
 
@@ -40,7 +41,7 @@ if __name__ == "__main__":
             else:
                 print(helpstring)
         else:
-            if sys.argv[2] == "--help":
+            if sys.argv[1] == "--help":
                 print(helpstring)
             else:
                 printAllGadgets(sys.argv[1])
