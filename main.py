@@ -45,3 +45,6 @@ if __name__ == "__main__":
                 print(helpstring)
             else:
                 printAllGadgets(sys.argv[1])
+    else:
+        print(helpstring)
+
