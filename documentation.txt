@@ -1,4 +1,43 @@
 Gadget Collection:
+To collect gadgets, the following process was used:
+
+1) Sections of the ELF containing executable code was extracted.
+This was done by iterating through the section headers, and extracting the data for each section that had the executable flag marked.
+The code to accomplish this is in elf.py, in the Elf class, in the function getTextSegments.
+
+
+2) The executable code was disassembled.
+This was achieved via Capstone's python bindings. The code was disassembled from the beginning of the section.
+When the end of the disassembled code is reached, it is checked as to whether this reaches the end of the elf section.
+If not, the offset to disassemble from is incremented (to skip a byte) and the process is repeated until the end of the section is reached.
+Thus we exhaustively disassemble all possible locations for blocks of code within the segment, and the result we get is a list of a list of instructions.
+The code to accomplish this is in elf.py, in the TextSegment class, in getCodeBlocks. The function is invoked in the instrumentation in main.py.
+
+
+3) Gadget terminators were located.
+Specific instruction mnemonics that were allowed to terminate gadgets were defined (gadgetTerminators in gadgets.py).
+Each disassembled block of code were traversed linearly, and the index of all terminators was located.
+Each disassembled block used a list of indices to keep track of the terminators.
+The code that does this is in gadget.py, in findGadgetTerminators, called by extractAllGadgets, a function to be called on a singular code block.
+The application to multiple code blocks was done by main.py.
+
+
+4) The instructions were traversed backwards until a non-"useful" instruction was encountered.
+A list of potentially "useful" (permissible) mnemonics of instructions to have in a gadget was kept in usefulOperations, in gadget.py.
+The list of disassembled was traversed backwards so long as only permissible instructions were encountered.
+Once an instruction not on the list was encountered, the traversal was halted, and the bytes comprising all instructions (including the non-permissible one) were extracted.
+The code to perform this step is in gadget.py, in extractGadgets (the first half).
+
+
+5) All substrings of the code found this way were evaluated as potential gadgets.
+For example for what is meant by a substring / subgadget:
+pop r15 ; ret is 0x41 0x5f 0xc3
+pop rdi ; ret is 0x5f 0xc3, whose bytes are a subsequence of the first sequence.
+Thus, on the bytes level, each gadget may contain sub-gadgets.
+To detect sub-gadgets, the bytes extracted from the previous stage were traversed backwards, as disassembled from each location.
+If the disassembly has the form of a valid gadget, it is added to the list of gadgets.
+The code to perform this sub-gadget detected was in gadget.py, in extractGadgets (the second half).
+
 
 
 Payload Generation:
