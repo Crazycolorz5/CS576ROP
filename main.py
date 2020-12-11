@@ -5,10 +5,29 @@ from execveChain import *
 def getAllGadgets(e):
     return [g for t in e.getTextSegments() for cb in t.getCodeBlocks() for g in extractAllGadgets(cb)]
 
+def printAllGadgets(s):
+    gs = getAllGadgets(s)
+    for g in gs:
+        print(g)
+
 def ROPchainBinary(s):
     elf = Elf(s)
     gadgets = getAllGadgets(elf)
     execveROPChain(gadgets, elf)
+
+helpstring = '''Usage: python3 main.py <path-to-binary> [mode]
+To display this help text, execute:
+python3 main.py --help
+
+mode can be one of the following:
+    --ropchain
+        execute the full ropchain exploit, and output a python script to
+        execveROPChain.py that generates a payload.
+    --gadget
+        extracts all gadgets from the binary and prints them to stdout.
+    
+    If no mode is provided, the tool is run in --gadget mode.
+'''
 
 if __name__ == "__main__":
     import sys
@@ -19,6 +38,9 @@ if __name__ == "__main__":
             elif sys.argv[2] == "--gadget":
                 printAllGadgets(sys.argv[1])
             else:
-                print("Unknown operation.")
+                print(helpstring)
         else:
-            printAllGadgets(sys.argv[1])
+            if sys.argv[2] == "--help":
+                print(helpstring)
+            else:
+                printAllGadgets(sys.argv[1])

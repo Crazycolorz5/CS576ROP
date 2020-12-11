@@ -5,15 +5,19 @@ We intend on creating a tool that extracts gadgets from provided ELF binaries an
 ### Supported Platforms
 Linux 64-bit
 
+### Usage
+The script main.py is to be run with python3.
+For all support options, execute
+`python3 main.py --help`
+
 ### Functionality: execute the shellcode.
 
 Our tool will be able to do the following:
 1) Extract useful gadgets from provided binaries (ELF files).
-2) Automatically assemble gadgets to form a payload that transfers control over to a secondary shellcode.
-    (Or -- launch sh/bash?)
+2) Automatically assemble gadgets to form a payload that gives the user a working sh shell.
 3) Provide a testing environment for the generated shellcode.
 
-### Dependencies
+### Dependencies / Installation
 
 ## Python3
 We intend to create the tool in Python3.
@@ -21,25 +25,27 @@ We intend to create the tool in Python3.
 ## Capstone
 We will use Capstone as our x86_64 disassembler, to aid in the locating of gadgets.
 This can be installed with `pip install capstone`.
+Alternatively, a requirements file is provided, so one may execute:
+`pip install -r requirements.txt`.
 
 ### Input: one (or more) 64-bit ELF binaries.
 
 ### Outputs
 ## Useful gadgets
 
-## The raw ROP payload to be executed.
+## A script to create the raw ROP payload to be executed.
 
 We also intend on developing a tool for testing the output of our program. We will provide a bare-bones second-stage shellcode for the purpose of testing.
 
-### Payload tester: an additional simple tool that will create a dummy process, load the executable(s) that contain the gadgets, load the ROP payload and a fixed second-stage shellcode, and execute it.
+### Payload tester: an additional simple tool that will create a dummy process, load the executable(s) that contain the gadgets, load the ROP payload, and execute it.
 
 
 ### Design Notes
 
-We will have a module for extracting gadgets and categorize them based on function (uses control flow analysis).
-We will have a solver that assembles gadgets of various functions into arbitary behaviors.
-We will have a script that assembles a pre-defined bootloading shellcode from the former two.
-There will be a separate vulnerable program and code for the bootloading shellcode to be modifiable.
+We will have a module for extracting as many gadgets as possible from a given binary.
+We will have a set of functions that searches gadgets for various behaviors that are useful building block.
+We will have a script that assembles a pre-defined execve shellcode from the former two.
+There will be a separate vulnerable program and test shellcodes.
 
 ## Stretch Goals
 
