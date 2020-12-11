@@ -11,19 +11,21 @@ def printAllGadgets(s):
     for g in gs:
         print(g)
 
-def ROPchainBinary(s):
+def ROPchainBinary(s, null_ok):
     elf = Elf(s)
     gadgets = getAllGadgets(elf)
-    execveROPChain(gadgets, elf)
+    execveROPChain(gadgets, elf, null_ok)
 
 helpstring = '''Usage: python3 main.py <path-to-binary> [mode]
 To display this help text, execute:
 python3 main.py --help
 
 mode can be one of the following:
-    --ropchain
+    --ropchain [--null-ok]
         execute the full ropchain exploit, and output a python script to
         execveROPChain.py that generates a payload.
+        If --null-ok is passed, no attempt to avoid null bytes is made.
+        This can reduce the size of the payload.
     --gadget
         extracts all gadgets from the binary and prints them to stdout.
     
@@ -33,9 +35,13 @@ mode can be one of the following:
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1:
-        if len(sys.argv) == 3:
+        if len(sys.argv) > 2:
             if sys.argv[2] == "--ropchain":
-                ROPchainBinary(sys.argv[1])
+                if len(sys.argv) > 3 and sys.argv[3] == "--null-ok":
+                    null_ok = True
+                else:
+                    null_ok = False
+                ROPchainBinary(sys.argv[1], null_ok)
             elif sys.argv[2] == "--gadget":
                 printAllGadgets(sys.argv[1])
             else:

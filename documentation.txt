@@ -86,6 +86,7 @@ See getDataSegment in the Elf class in elf.py.
 
 2) Write b'/bin//sh\x00\x00\x00\x00\x00\x00\x00\x00' to the .data section.
 This is "/bin//sh" followed by a null quadword. This is easily done with WriteStuffIntoMemory.
+Note that if the program is told to not avoid null bytes, we will use b'/bin/sh\x00' instead.
 
 3) Prepare the arguments for execve system call.
 We need rax to be 59, rdi to be a pointer to the data section, and rsi and rdx to be 0.
