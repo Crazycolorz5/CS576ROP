@@ -15,7 +15,6 @@ For all support options, execute
 Our tool will be able to do the following:
 1) Extract useful gadgets from provided binaries (ELF files).
 2) Automatically assemble gadgets to form a payload that gives the user a working sh shell.
-3) Provide a testing environment for the generated shellcode.
 
 ### Dependencies / Installation
 
@@ -31,14 +30,10 @@ Alternatively, a requirements file is provided, so one may execute:
 ### Input: one (or more) 64-bit ELF binaries.
 
 ### Outputs
+
 ## Useful gadgets
 
 ## A script to create the raw ROP payload to be executed.
-
-We also intend on developing a tool for testing the output of our program. We will provide a bare-bones second-stage shellcode for the purpose of testing.
-
-### Payload tester: an additional simple tool that will create a dummy process, load the executable(s) that contain the gadgets, load the ROP payload, and execute it.
-
 
 ### Design Notes
 
@@ -57,7 +52,7 @@ Simple specification options for additional behaviors of the ROP payload.
 
 Source code and binary for the main ROP creation tool.
 
-Source code and binary for payload tester and testing second-stage shellcode.
+Source code and binary for example second-stage shellcode.
 
 Video demonstration of the tool in action on a successful exploit.
 

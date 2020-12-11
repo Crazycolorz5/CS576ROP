@@ -264,7 +264,7 @@ def execve_bin_sh(data_section_addr, null_ok):
     fd.write(header)
     
     # Step-2: Writing "/bin/sh\x00" into .data section
-    binsh = b'/bin//sh\x00\x00\x00\x00\x00\x00\x00\x00' if not null_ok else b'/bin/sh\x00'
+    binsh = b'/bin//sh\x00\x00\x00\x00\x00\x00\x00\x00'
     if not null_ok and data_section_addr & 0xff == 0:
         address = data_section_addr | 0x8
     else:
