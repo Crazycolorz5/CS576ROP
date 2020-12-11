@@ -47,7 +47,7 @@ def getPopGadgets(gadgetList, reg):
     acc.sort(key=len) # Prefer gadgets with fewer pops -- less padding, less clobbering
     return acc
 
-def makeLoadConstIntoRegSeq(gadgetList, reg, noClobber):
+def makeLoadConstIntoRegSeq(gadgetList, reg, noClobber = []):
     regList = getPopGadgets(gadgetList, reg)
     # Search for "pop Reg; ret"
     for gadget in regList:
@@ -111,6 +111,7 @@ def makeQwordLoadSeq(gadgetList):
         ops = operands(g[0])
         dest = ops[0][-4:-1]
         src = ops[1]
+        if dest == src: continue
         try:
             loadConsts = makeLoadConstsIntoRegsSeq(gadgetList, [src, dest], [])
             return lambda qword, addr: loadConsts([qword, addr], [str(struct.pack("<Q", qword)), "Location to write"], [False, True]) + writeGadget(g)
@@ -118,7 +119,7 @@ def makeQwordLoadSeq(gadgetList):
             continue 
     raise Exception("Could not combine gadgets to write to arbitary memory.") 
 
-def WriteStuffIntoMemory(GadgetList, data, addr) : 
+def WriteStuffIntoMemory(GadgetList, data, addr):
     writeFunc = makeQwordLoadSeq(GadgetList)
     acc = ''
     while len(data) > 0 :

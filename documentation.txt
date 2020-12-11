@@ -41,4 +41,55 @@ The code to perform this sub-gadget detected was in gadget.py, in extractGadgets
 
 
 Payload Generation:
+The payload was created with the constant goal of calling execve with sh as the parameter. To accomplish this, a few helper functions were created.
+
+Helper functions:
+Search gadgets:
+getPopGadgets(gadgetList, reg) - get a list of gadgets in the provided list whose first action is to pop into the given register.
+
+getMovQwordGadgets(gadgets) - get a list of gadgets in the provided list that write to arbitary memory from a register.
+
+getSyscallGadgets(GadgetList) - get all gadgets that consist of a single syscall command.
+
+
+Note that for every gadget we have all of its subgadgets in our list due to our gadget extraction algorithm.
+Thus when checking for behavior (e.g. for getPopGadgets), we need only check the first instruction within the gadget.
+
+
+Sequence gadgets:
+makeLoadConstIntoRegSeq(gadgetList, reg, noClobber) - Find an appropriate pop gadget for reg that does not clobber any of the registers in noClobber. Returns a function loadConstIntoReg(const, comment = '', isOffset = False) that outputs a ROP sequence that loads the designated const to the originally specified register, with appropriate padding below the constant on the stack. Comment is a comment to include on the constant being loaded, and isOffset is whether the constant refers to an address within the binary.
+
+makeLoadConstsIntoRegsSeq(gadgetList, regs, noClobber = []) - Since we often need to load multiple registers, this function is offered. Since later loads must avoid clobbering the previous loads, a given order may not necessarily yield a valid loads, when they may exist for another order. Thus this function tries all permutations of orders to find one that is valid, then provides a function that generates a ROP sequence that loads provided constants into the registers. Optional parameters to the return are list versions of those to the singular version.
+
+makeQwordLoadSeq(gadgetList) - returns a function f(qword, addr) that writes the specifies quadword to the specified address within the binary (thus we can target the .data section). The function iterates over all MovQwordGadgets to find one that has the appropriate register loads available as gadgets.
+
+
+Wrapper Functions:
+LoadConstIntoReg(gadgetList, reg, noClobber, const, comment, isOffset) - a wrapper for makeLoadConstIntoRegSeq and immediately calls the returned function.
+
+loadConstsIntoRegs(gadgetList, regs, noClobber, consts, comments, isOffsets) - the same, but for makeLoadConstsIntoRegsSeq.
+
+WriteStuffIntoMemory(GadgetList, data, addr) - breaks up the divided data into quadwords and loads it to the specified address.
+
+
+With all of these helper functions, writing the actual payload generation is qutie simple.
+
+1) Locate .data section of the binary.
+This is done within the Elf class by checking shstrtab entries for .data.
+See getDataSegment in the Elf class in elf.py.
+
+2) Write b'/bin/sh\x00' to the .data section.
+This is easily done with WriteStuffIntoMemory.
+
+3) Prepare the arguments for execve system call.
+We need rax to be 59, rdi to be a pointer to the data section, and rsi and rdx to be 0.
+This is easily done with loadConstsIntoRegs.
+
+4) Make a syscall.
+All that needs to be done is to add the address of a syscall gadget.
+
+
+Step 1 is handled in execveROPChain, in execveChain.py.
+The rest of the steps are handled in execve_bin_sh, in execveChain.py.
+execveROPChain is called from ROPchainBinary, in main.py.
 
