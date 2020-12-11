@@ -53,6 +53,8 @@ Simple specification options for additional behaviors of the ROP payload.
 Source code and binary for the main ROP creation tool.
 
 Source code and binary for example second-stage shellcode.
+This is available in the print_passwd folder.
+The code should just be compiled with `make` while in the directory.
 
 Video demonstration of the tool in action on a successful exploit.
 
